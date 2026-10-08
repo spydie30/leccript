@@ -104,7 +104,7 @@ function App() {
     setDraft('')
     setIsThinking(true)
 
-    window.setTimeout(() => {
+    window.setTimeout(() => { //Placeholder for async API call to get assistant response, provideing mock response for now
       const reply = mockReply(text)
       setThreads((currentThreads) => currentThreads.map((thread) => thread.id === threadId
         ? { ...thread, messages: [...thread.messages, { id: `${threadId}-assistant-${messages.length + 1}`, role: 'assistant', ...reply }] }

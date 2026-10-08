@@ -1,20 +1,25 @@
 .app-shell {
   display: flex;
   width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--canvas);
 }
 
 .sidebar {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 4;
   display: flex;
   flex: 0 0 268px;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  align-self: flex-start;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px 16px 14px;
   color: #e4ece7;
   background: var(--sidebar);
@@ -295,8 +300,8 @@
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
   background-color: var(--canvas);
   background-image: radial-gradient(ellipse at 52% 42%, rgba(250, 251, 247, 0.3), transparent 58%), linear-gradient(rgba(43, 73, 59, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(43, 73, 59, 0.025) 1px, transparent 1px);
   background-size: auto, 32px 32px, 32px 32px;
@@ -371,6 +376,7 @@
   flex: 1;
   align-self: center;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 42px 38px 24px;
   scrollbar-color: #c8d1c8 transparent;
   scrollbar-width: thin;
@@ -664,7 +670,8 @@ textarea:focus-visible { outline: 2px solid #b0744d; outline-offset: 2px; }
     position: fixed;
     inset: 0 auto 0 0;
     width: min(285px, calc(100vw - 48px));
-    min-height: 100dvh;
+    height: 100dvh;
+    min-height: 0;
     transform: translateX(-102%);
     transition: transform 220ms ease;
     box-shadow: 12px 0 30px rgba(15, 31, 23, 0.17);
