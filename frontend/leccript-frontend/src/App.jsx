@@ -1,25 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 const starterPrompts = [
   { icon: 'sparkles', title: 'Explain a tricky concept', prompt: 'Explain the difference between supervised and unsupervised learning.' },
-  { icon: 'list', title: 'Turn notes into a summary', prompt: 'Summarize the key ideas from today’s lecture on machine learning.' },
-  { icon: 'help', title: 'Quiz me on a topic', prompt: 'Quiz me on the fundamentals of neural networks.' },
+  { icon: 'list', title: 'Turn notes into a summary', prompt: 'Summarize the key ideas from the lecture.' },
+  { icon: 'help', title: 'What did the professor say?', prompt: 'What did the professor say about the N3 segmentation problem?' },
   { icon: 'arrows', title: 'Compare two ideas', prompt: 'Compare gradient descent and stochastic gradient descent.' },
 ]
 
 const initialThreads = [
   { id: 'attention', title: 'Understanding attention layers', messages: [
     { id: 'attention-user', role: 'user', text: 'Why does self-attention help a model understand context?' },
-    { id: 'attention-assistant', role: 'assistant', intro: 'Self-attention lets each token look at other tokens and decide which context matters most.', points: ['Each token creates a query, key, and value representation.', 'Similarity between queries and keys determines how much information to gather.', 'The weighted values give each token a context-aware representation.'], source: 'Attention & Transformers · Lecture 08' },
-  ] },
-  { id: 'probability', title: 'Probability distributions', messages: [
-    { id: 'probability-user', role: 'user', text: 'When should I use a normal distribution?' },
-    { id: 'probability-assistant', role: 'assistant', intro: 'A normal distribution is a useful model for continuous measurements that cluster around a typical value.', points: ['It is symmetric around its mean.', 'The standard deviation describes how spread out values are.', 'Check the data shape before assuming a normal model is appropriate.'], source: 'Probability & Statistics · Lecture 03' },
-  ] },
-  { id: 'linear-algebra', title: 'Linear algebra revision', messages: [
-    { id: 'linear-algebra-user', role: 'user', text: 'Give me a quick refresher on matrix multiplication.' },
-    { id: 'linear-algebra-assistant', role: 'assistant', intro: 'Matrix multiplication combines rows from the first matrix with columns from the second.', points: ['The inner dimensions must match.', 'Each output entry is a dot product of one row and one column.', 'The result has the outer dimensions of the two matrices.'], source: 'Linear Algebra · Lecture 01' },
+    { id: 'attention-assistant', role: 'assistant', intro: 'Self-attention lets each token look at other tokens and decide which context matters most.', points: ['Each token creates a query, key, and value representation.', 'Similarity between queries and keys determines how much information to gather.', 'The weighted values give each token a context-aware representation.'], source: 'Attention & Transformers · Lecture 08', citations: [] },
   ] },
 ]
 const emptyMessages = []
@@ -37,30 +31,25 @@ function Icon({ name, size = 18 }) {
     menu: <><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></>,
     more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
     book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5z" /><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20" /><path d="M8 7h8" /></>,
+    close: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+    trash: <><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></>,
   }
 
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
 }
 
-function mockReply(prompt) {
-  const subject = prompt.replace(/[?.!]+$/, '')
-
-  if (/quiz|test me/i.test(prompt)) {
-    return { intro: 'Let’s make this active recall. Answer these without looking anything up:', points: ['What role does an activation function play in a neural network?', 'How do weights and biases affect a neuron’s output?', 'Why can adding more layers help a model learn complex patterns?'], source: 'Neural Networks · Lecture 04' }
+function parseFilenameHint(filename) {
+  const match = filename.match(/^(.+?)-(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}|\d{8})-([^.]+)\.(?:txt|vtt|srt)$/i)
+  if (!match) return { professor: '', lectureDate: '', courseCode: '' }
+  const prof = match[1].replace(/[_\s]+/g, ' ').trim()
+  let dateStr = match[2]
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    const [d, m, y] = dateStr.split('-')
+    dateStr = `${y}-${m}-${d}`
+  } else if (/^\d{8}$/.test(dateStr)) {
+    dateStr = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`
   }
-  if (/supervised.*unsupervised/i.test(prompt)) {
-    return { intro: 'The key difference is whether the training examples come with labels:', points: ['Supervised learning uses labeled examples to learn a mapping from inputs to known answers.', 'Unsupervised learning looks for structure in unlabeled data, such as clusters or compact representations.', 'Use supervised methods when you have target labels; use unsupervised methods to explore patterns without them.'], source: 'Machine Learning Foundations · Lecture 02' }
-  }
-  if (/^compare\b/i.test(prompt)) {
-    return { intro: 'A useful comparison starts with the goal, then looks at how each method reaches it:', points: ['Identify what the two approaches have in common.', 'Compare the information each one uses at each step.', 'That trade-off often explains differences in speed, stability, and results.'], source: 'Optimization Methods · Lecture 06' }
-  }
-  if (/difference/i.test(prompt)) {
-    return { intro: `To understand ${subject.toLowerCase()}, focus on the signal each approach learns from:`, points: ['One approach learns from examples paired with known answers.', 'The other looks for useful structure without those answer labels.', 'That difference determines which problems each approach is best suited to solve.'], source: 'Machine Learning Foundations · Lecture 02' }
-  }
-  if (/summar|key ideas|notes/i.test(prompt)) {
-    return { intro: 'Here’s a concise set of takeaways to study from:', points: ['A model learns by adjusting its parameters to reduce prediction error.', 'Training data provides examples; evaluation data checks whether learning generalizes.', 'The choice of objective and optimization method shapes what the model can learn.'], source: 'Machine Learning Foundations · Lecture 02' }
-  }
-  return { intro: `Here’s a clear way to think about ${subject.toLowerCase()}:`, points: ['Begin with the basic idea: identify what goes in, what happens, and what comes out.', 'Then connect each step to its purpose rather than memorizing it in isolation.', 'A quick check: explain the concept in one sentence, then give a concrete example.'], source: 'Machine Learning Foundations · Lecture 02' }
+  return { professor: prof, lectureDate: dateStr, courseCode: match[3].toUpperCase() }
 }
 
 function App() {
@@ -71,9 +60,46 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Backend state
+  const [lectures, setLectures] = useState([])
+  const [selectedCourse, setSelectedCourse] = useState('')
+  const [studyMode, setStudyMode] = useState('Study partner')
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [activeCitation, setActiveCitation] = useState(null)
+
+  // Upload form state
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploadProf, setUploadProf] = useState('')
+  const [uploadCourse, setUploadCourse] = useState('')
+  const [uploadDate, setUploadDate] = useState('')
+  const [uploadTitle, setUploadTitle] = useState('')
+  const [uploadRecordingUrl, setUploadRecordingUrl] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState(null)
+
   const messagesEndRef = useRef(null)
+  const quickFileInputRef = useRef(null)
   const activeThread = threads.find((thread) => thread.id === activeThreadId)
   const messages = activeThread?.messages ?? emptyMessages
+
+  const courses = Array.from(new Set(lectures.map((l) => l.course_code))).sort()
+
+  async function fetchLectures() {
+    try {
+      const resp = await fetch(`${API_BASE}/api/lectures`)
+      if (resp.ok) {
+        const data = await resp.json()
+        setLectures(data)
+      }
+    } catch {
+      // Backend offline or starting up
+    }
+  }
+
+  useEffect(() => {
+    fetchLectures()
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -86,7 +112,67 @@ function App() {
     setSidebarOpen(false)
   }
 
-  function sendMessage(messageText = draft) {
+  function handleSelectFile(file) {
+    if (!file) return
+    setUploadFile(file)
+    const hints = parseFilenameHint(file.name)
+    if (hints.professor) setUploadProf(hints.professor)
+    if (hints.courseCode) setUploadCourse(hints.courseCode)
+    if (hints.lectureDate) setUploadDate(hints.lectureDate)
+    setUploadStatus(null)
+    setLibraryOpen(true)
+  }
+
+  async function handleIngestSubmit(event) {
+    event.preventDefault()
+    if (!uploadFile || isUploading) return
+
+    setIsUploading(true)
+    setUploadStatus(null)
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+    if (uploadProf.trim()) formData.append('professor', uploadProf.trim())
+    if (uploadCourse.trim()) formData.append('course_code', uploadCourse.trim())
+    if (uploadDate.trim()) formData.append('lecture_date', uploadDate.trim())
+    if (uploadTitle.trim()) formData.append('title', uploadTitle.trim())
+    if (uploadRecordingUrl.trim()) formData.append('recording_url', uploadRecordingUrl.trim())
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/lectures/ingest`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await resp.json()
+      if (!resp.ok) {
+        throw new Error(data.detail || 'Upload failed')
+      }
+      setUploadStatus({
+        type: 'success',
+        text: `${data.already_existed ? 'Already indexed' : 'Ingested'} ${data.course_code} · Prof. ${data.professor} (${data.cues_count} cues, ${data.chunks_count} chunks)`,
+      })
+      setUploadFile(null)
+      setUploadTitle('')
+      setUploadRecordingUrl('')
+      await fetchLectures()
+    } catch (err) {
+      setUploadStatus({ type: 'error', text: err.message })
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  async function handleDeleteLecture(lectureId) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/lectures/${lectureId}`, { method: 'DELETE' })
+      if (resp.ok) {
+        await fetchLectures()
+      }
+    } catch {
+      // Ignore error
+    }
+  }
+
+  async function sendMessage(messageText = draft) {
     const text = messageText.trim()
     if (!text || isThinking) return
 
@@ -104,13 +190,61 @@ function App() {
     setDraft('')
     setIsThinking(true)
 
-    window.setTimeout(() => { //Placeholder for async API call to get assistant response, provideing mock response for now
-      const reply = mockReply(text)
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: text,
+          course_code: selectedCourse || null,
+          lecturer_only: studyMode === 'Professor only',
+          top_k: studyMode === 'Deep focus' ? 6 : 4,
+        }),
+      })
+
+      if (!resp.ok) {
+        throw new Error(`Server error (${resp.status})`)
+      }
+      const reply = await resp.json()
       setThreads((currentThreads) => currentThreads.map((thread) => thread.id === threadId
-        ? { ...thread, messages: [...thread.messages, { id: `${threadId}-assistant-${messages.length + 1}`, role: 'assistant', ...reply }] }
+        ? {
+            ...thread,
+            messages: [
+              ...thread.messages,
+              {
+                id: `${threadId}-assistant-${ Date.now() }`,
+                role: 'assistant',
+                intro: reply.intro,
+                points: reply.points || [],
+                source: reply.source || 'Lecture Library',
+                citations: reply.citations || [],
+              },
+            ],
+          }
         : thread))
+    } catch (err) {
+      setThreads((currentThreads) => currentThreads.map((thread) => thread.id === threadId
+        ? {
+            ...thread,
+            messages: [
+              ...thread.messages,
+              {
+                id: `${threadId}-assistant-${ Date.now() }`,
+                role: 'assistant',
+                intro: 'Could not reach the Lecture RAG backend.',
+                points: [
+                  `Details: ${err.message}`,
+                  'Make sure the FastAPI server is running on port 8000 (`docker compose up --build`).',
+                ],
+                source: 'Connection Error',
+                citations: [],
+              },
+            ],
+          }
+        : thread))
+    } finally {
       setIsThinking(false)
-    }, 850)
+    }
   }
 
   function handleComposerKeyDown(event) {
@@ -134,7 +268,11 @@ function App() {
           <button className="nav-button" type="button" onClick={() => setSearchOpen((open) => !open)}><Icon name="search" size={17} /><span>Search chats</span><span className="shortcut">⌘ /</span></button>
           {searchOpen && <input className="search-input" autoFocus placeholder="Search your chats" aria-label="Search chats" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />}
           <div className="section-label">YOUR LIBRARY</div>
-          <button className="nav-button library-link" type="button"><Icon name="book" size={17} /><span>Lecture notes</span></button>
+          <button className="nav-button library-link" type="button" onClick={() => setLibraryOpen(true)}>
+            <Icon name="book" size={17} />
+            <span>Lecture notes</span>
+            <span className="shortcut">{lectures.length}</span>
+          </button>
         </div>
 
         <div className="history-section">
@@ -145,7 +283,7 @@ function App() {
         </div>
 
         <div className="sidebar-bottom">
-          <div className="plan-note"><span className="plan-icon"><Icon name="sparkles" size={16} /></span><div><strong>Your study space</strong><span>Ready when you are</span></div><Icon name="more" size={17} /></div>
+          <div className="plan-note"><span className="plan-icon"><Icon name="sparkles" size={16} /></span><div><strong>{lectures.length} lectures indexed</strong><span>Hybrid RRF + Verbatim cues</span></div><Icon name="more" size={17} /></div>
           <button className="profile-button" type="button"><span className="avatar">T</span><span className="profile-copy"><strong>Tejas</strong><small>Free plan</small></span><Icon name="more" size={17} /></button>
         </div>
       </aside>
@@ -154,8 +292,40 @@ function App() {
 
       <section className="chat-panel">
         <header className="topbar">
-          <div className="topbar-left"><button className="icon-button mobile-menu" type="button" aria-label="Open sidebar" onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button><div className="course-label"><span className="course-dot" /><span>STUDY ASSISTANT</span></div></div>
-          <div className="topbar-right"><label className="model-picker"><span className="model-status" /><select aria-label="Choose assistant model" defaultValue="Study partner"><option>Study partner</option><option>Quick answers</option><option>Deep focus</option></select></label><button className="share-button" type="button" onClick={() => navigator.clipboard?.writeText(window.location.href)}>Share</button></div>
+          <div className="topbar-left">
+            <button className="icon-button mobile-menu" type="button" aria-label="Open sidebar" onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button>
+            <div className="course-label">
+              <span className="course-dot" />
+              <span>{selectedCourse ? `COURSE: ${selectedCourse}` : 'STUDY ASSISTANT'}</span>
+            </div>
+          </div>
+          <div className="topbar-right">
+            <label className="model-picker">
+              <select
+                aria-label="Filter by course"
+                value={selectedCourse}
+                onChange={(e) => setSelectedCourse(e.target.value)}
+              >
+                <option value="">All courses ({lectures.length})</option>
+                {courses.map((code) => (
+                  <option key={code} value={code}>{code}</option>
+                ))}
+              </select>
+            </label>
+            <label className="model-picker">
+              <span className="model-status" />
+              <select
+                aria-label="Choose assistant mode"
+                value={studyMode}
+                onChange={(e) => setStudyMode(e.target.value)}
+              >
+                <option value="Study partner">Study partner</option>
+                <option value="Professor only">Professor only</option>
+                <option value="Deep focus">Deep focus</option>
+              </select>
+            </label>
+            <button className="share-button" type="button" onClick={() => setLibraryOpen(true)}>+ Upload</button>
+          </div>
         </header>
 
         <div className={`conversation ${messages.length === 0 ? 'conversation-empty' : ''}`}>
@@ -167,7 +337,7 @@ function App() {
               <div className="prompt-grid">{starterPrompts.map((item) => (
                 <button className="prompt-card" key={item.title} type="button" onClick={() => sendMessage(item.prompt)}><span className={`prompt-icon prompt-icon-${item.icon}`}><Icon name={item.icon} size={18} /></span><span className="prompt-title">{item.title}</span><span className="prompt-arrow">↗</span></button>
               ))}</div>
-              <div className="source-hint"><span className="source-hint-icon"><Icon name="book" size={16} /></span><span>Ground answers in your course material, or just ask anything.</span></div>
+              <div className="source-hint"><span className="source-hint-icon"><Icon name="book" size={16} /></span><span>Ground answers in your course material ({lectures.length} lectures indexed), or upload a transcript.</span></div>
             </div>
           ) : (
             <div className="message-list" aria-live="polite">
@@ -175,7 +345,36 @@ function App() {
                 <article className={`message message-${message.role}`} key={message.id}>
                   {message.role === 'assistant' ? <span className="assistant-mark"><Icon name="sparkles" size={17} /></span> : <span className="user-mark">T</span>}
                   <div className="message-body"><div className="message-author">{message.role === 'assistant' ? 'Study partner' : 'You'}</div>
-                    {message.role === 'user' ? <p>{message.text}</p> : <><p>{message.intro}</p><ul>{message.points.map((point) => <li key={point}>{point}</li>)}</ul><button className="source-chip" type="button"><Icon name="book" size={14} /> {message.source}<span>↗</span></button></>}
+                    {message.role === 'user' ? (
+                      <p>{message.text}</p>
+                    ) : (
+                      <>
+                        <p>{message.intro}</p>
+                        {message.points?.length > 0 && (
+                          <ul>{message.points.map((point, idx) => <li key={`${message.id}-pt-${idx}`}>{point}</li>)}</ul>
+                        )}
+                        <div className="citation-list">
+                          {message.citations && message.citations.length > 0 ? (
+                            message.citations.map((cit) => (
+                              <button
+                                key={cit.chunk_id}
+                                className="source-chip"
+                                type="button"
+                                onClick={() => setActiveCitation(cit)}
+                              >
+                                <Icon name="book" size={14} />
+                                <span>[{cit.chunk_id}] {cit.label}</span>
+                                <span>↗</span>
+                              </button>
+                            ))
+                          ) : (
+                            <button className="source-chip" type="button">
+                              <Icon name="book" size={14} /> {message.source}<span>↗</span>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </article>
               ))}
@@ -185,11 +384,188 @@ function App() {
           )}
         </div>
 
-        <div className="composer-area"><div className="composer">
-          <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="Ask anything about your studies..." rows="1" aria-label="Message study partner" />
-          <div className="composer-controls"><button className="attach-button" type="button" aria-label="Attach a file" title="Attach a file"><Icon name="paperclip" size={18} /></button><div className="composer-right"><span className="enter-hint">Press <kbd>↵</kbd> to send</span><button className="send-button" type="button" aria-label="Send message" disabled={!draft.trim() || isThinking} onClick={() => sendMessage()}><Icon name="send" size={17} /></button></div></div>
-        </div><p className="disclaimer">Leccript can make mistakes. Check important information against your course materials.</p></div>
+        <div className="composer-area">
+          <div className="composer">
+            <textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={handleComposerKeyDown} placeholder="Ask anything about your lectures (e.g., What did Prof. Khare say about N3?)..." rows="1" aria-label="Message study partner" />
+            <div className="composer-controls">
+              <input
+                ref={quickFileInputRef}
+                type="file"
+                accept=".txt,.vtt,.srt"
+                style={{ display: 'none' }}
+                onChange={(e) => handleSelectFile(e.target.files?.[0])}
+              />
+              <button
+                className="attach-button"
+                type="button"
+                aria-label="Upload lecture transcript"
+                title="Upload lecture transcript (.txt, .vtt, .srt)"
+                onClick={() => quickFileInputRef.current?.click()}
+              >
+                <Icon name="paperclip" size={18} />
+              </button>
+              <div className="composer-right">
+                <span className="enter-hint">Press <kbd>↵</kbd> to send</span>
+                <button className="send-button" type="button" aria-label="Send message" disabled={!draft.trim() || isThinking} onClick={() => sendMessage()}><Icon name="send" size={17} /></button>
+              </div>
+            </div>
+          </div>
+          <p className="disclaimer">Citations and timestamps are verified directly against lecture cues in PostgreSQL.</p>
+        </div>
       </section>
+
+      {/* Lecture Notes Library & Transcript Ingestion Modal */}
+      {libraryOpen && (
+        <div className="modal-backdrop" onClick={() => setLibraryOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Lecture Notes Library</h2>
+                <p>Upload Zoom, WebVTT, or SRT transcripts with speaker and timestamp indexing.</p>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setLibraryOpen(false)} aria-label="Close modal">
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+
+            <form className="ingest-form" onSubmit={handleIngestSubmit}>
+              <div className="form-row">
+                <label className="file-drop-label">
+                  <input
+                    type="file"
+                    accept=".txt,.vtt,.srt"
+                    onChange={(e) => handleSelectFile(e.target.files?.[0])}
+                  />
+                  <span>{uploadFile ? `Selected: ${uploadFile.name}` : 'Choose transcript (.txt, .vtt, .srt) — e.g. prof_name-2026-09-14-DS101.txt'}</span>
+                </label>
+              </div>
+              <div className="form-grid">
+                <input
+                  type="text"
+                  placeholder="Professor (auto from filename)"
+                  value={uploadProf}
+                  onChange={(e) => setUploadProf(e.target.value)}
+                />
+                <input
+                  type="text"
+                  placeholder="Course Code (e.g. DS101)"
+                  value={uploadCourse}
+                  onChange={(e) => setUploadCourse(e.target.value)}
+                />
+                <input
+                  type="date"
+                  value={uploadDate}
+                  onChange={(e) => setUploadDate(e.target.value)}
+                />
+              </div>
+              <div className="form-grid-2">
+                <input
+                  type="text"
+                  placeholder="Lecture title (optional)"
+                  value={uploadTitle}
+                  onChange={(e) => setUploadTitle(e.target.value)}
+                />
+                <input
+                  type="url"
+                  placeholder="Recording URL for timestamp jump (optional)"
+                  value={uploadRecordingUrl}
+                  onChange={(e) => setUploadRecordingUrl(e.target.value)}
+                />
+              </div>
+              <div className="form-actions">
+                <button className="primary-btn" type="submit" disabled={!uploadFile || isUploading}>
+                  {isUploading ? 'Ingesting & Embedding...' : 'Ingest Transcript'}
+                </button>
+                {uploadStatus && (
+                  <span className={`status-badge status-${uploadStatus.type}`}>{uploadStatus.text}</span>
+                )}
+              </div>
+            </form>
+
+            <div className="lecture-table-wrap">
+              <h3>Indexed Lectures ({lectures.length})</h3>
+              {lectures.length === 0 ? (
+                <p className="empty-note">No lectures ingested yet. Upload a transcript above to get started.</p>
+              ) : (
+                <div className="lecture-items">
+                  {lectures.map((lec) => (
+                    <div className="lecture-item" key={lec.id}>
+                      <div>
+                        <strong>{lec.course_code} · {lec.title || lec.source_filename}</strong>
+                        <small>
+                          Prof. {lec.professor} (Speaker label: {lec.lecturer_speaker || 'Auto'}) · {lec.lecture_date} · {lec.cues_count} cues / {lec.chunks_count} chunks
+                        </small>
+                      </div>
+                      <div className="lecture-item-actions">
+                        <button
+                          className="share-button"
+                          type="button"
+                          onClick={() => {
+                            setSelectedCourse(lec.course_code)
+                            setLibraryOpen(false)
+                          }}
+                        >
+                          Filter Chat
+                        </button>
+                        <button
+                          className="icon-button"
+                          type="button"
+                          title="Delete lecture"
+                          onClick={() => handleDeleteLecture(lec.id)}
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Verbatim Citation & Timestamp Inspector Modal */}
+      {activeCitation && (
+        <div className="modal-backdrop" onClick={() => setActiveCitation(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Source [{activeCitation.chunk_id}] · {activeCitation.course_code}</h2>
+                <p>
+                  Prof. {activeCitation.professor} · {activeCitation.lecture_date} · Timestamp {activeCitation.timestamp_start} – {activeCitation.timestamp_end} (Lecturer share: {Math.round(activeCitation.lecturer_share * 100)}%)
+                </p>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setActiveCitation(null)} aria-label="Close citation">
+                <Icon name="close" size={18} />
+              </button>
+            </div>
+
+            {activeCitation.jump_url && (
+              <div className="jump-banner">
+                <a href={activeCitation.jump_url} target="_blank" rel="noreferrer" className="primary-btn">
+                  Jump to Recording @ {activeCitation.timestamp_start} ({Math.floor(activeCitation.start_s)}s) ↗
+                </a>
+              </div>
+            )}
+
+            <div className="cue-list">
+              {activeCitation.cues?.map((cue) => (
+                <div key={cue.idx} className={`cue-row ${cue.is_lecturer ? 'cue-lecturer' : 'cue-student'}`}>
+                  <span className="cue-ts">{cue.timestamp}</span>
+                  <div className="cue-content">
+                    <strong>
+                      {cue.speaker || 'Speaker'}
+                      {cue.is_lecturer ? <span className="role-pill">Lecturer</span> : <span className="role-pill role-student">Student</span>}
+                    </strong>
+                    <p>{cue.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

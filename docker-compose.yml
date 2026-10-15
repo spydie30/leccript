@@ -21,12 +21,31 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://lecture:lecture@db:5432/lecture_rag
       REDIS_URL: redis://redis:6379/0
-      EMBED_DIM: "1024"   # must match the embedding model you pick
+      EMBED_DIM: "1024"
+      # Optional: configure external LLM / Embedding provider
+      # OPENAI_API_KEY: ""
+      # OPENAI_BASE_URL: "https://api.openai.com/v1"
+      # LLM_MODEL: "gpt-4o-mini"
+      # EMBED_MODEL: "text-embedding-3-large"
     depends_on:
       db: { condition: service_healthy }
     ports: ["8000:8000"]
     volumes: ["./backend:/app"]
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend/leccript-frontend:/app
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    ports: ["5173:5173"]
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
 
 volumes:
   pgdata:

@@ -718,3 +718,262 @@ textarea:focus-visible { outline: 2px solid #b0744d; outline-offset: 2px; }
   .prompt-icon { width: 24px; height: 24px; }
   .prompt-title { font-size: 9px; }
 }
+
+/* Citation Chips & Modals */
+.citation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.citation-list .source-chip {
+  margin-top: 0;
+}
+
+.source-chip:hover {
+  border-color: #b7c4b5;
+  background: #fff;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(18, 32, 24, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  width: min(100%, 680px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid #dce2da;
+  border-radius: 11px;
+  color: #253b30;
+  background: #fafbf8;
+  box-shadow: 0 20px 50px rgba(15, 31, 23, 0.22);
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e4e8e1;
+  padding-bottom: 12px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.modal-header p {
+  margin: 4px 0 0;
+  color: #637267;
+  font-size: 11px;
+}
+
+.ingest-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dfe4dc;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.file-drop-label {
+  display: block;
+  padding: 11px 13px;
+  border: 1px dashed #b4c2b4;
+  border-radius: 6px;
+  color: #35473c;
+  background: #f6f8f4;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.file-drop-label input {
+  display: none;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ingest-form input[type="text"],
+.ingest-form input[type="date"],
+.ingest-form input[type="url"] {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #dce1d9;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  color: #2d3c32;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  background: #315647;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary-btn:disabled {
+  background: #cbd4cc;
+  cursor: not-allowed;
+}
+
+.status-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 5px;
+}
+
+.status-success {
+  color: #25573c;
+  background: #e3f1e8;
+}
+
+.status-error {
+  color: #8c2d2d;
+  background: #f9e3e3;
+}
+
+.lecture-table-wrap h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #4b5d52;
+}
+
+.empty-note {
+  color: #7c877d;
+  font-size: 11px;
+}
+
+.lecture-items {
+  display: grid;
+  gap: 8px;
+}
+
+.lecture-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e2e6df;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.lecture-item strong {
+  display: block;
+  font-size: 12px;
+  color: #2c3e33;
+}
+
+.lecture-item small {
+  color: #6b786e;
+  font-size: 10px;
+}
+
+.lecture-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cue-list {
+  display: grid;
+  gap: 8px;
+}
+
+.cue-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e4e8e0;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.cue-lecturer {
+  border-left: 3px solid #315647;
+}
+
+.cue-student {
+  border-left: 3px solid #c98856;
+  background: #fcfaf5;
+}
+
+.cue-ts {
+  font-family: monospace;
+  font-size: 11px;
+  color: #66756a;
+}
+
+.cue-content strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.cue-content p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.role-pill {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  color: #274c3c;
+  background: #e3efe8;
+}
+
+.role-student {
+  color: #8a5129;
+  background: #f5e8dc;
+}
